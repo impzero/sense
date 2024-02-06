@@ -7,16 +7,23 @@ import (
 
 func main() {
 	source := "hello world!"
+	digits := "111122223333"
 
 	helloParser := parseString("hello")
 	helloAndSpaceParser := and(helloParser, parseChar(' '))
 	parsed, err := helloAndSpaceParser([]rune(source))
+	manyOneParser := many(parseChar('1'))
+	parsedDigits, err := manyOneParser([]rune(digits))
+	if err != nil {
+		panic(err)
+	}
 
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("parsed: %v", parsed)
+	fmt.Printf("parsed: %v\n", parsed)
+	fmt.Printf("parsed 1s: %v", parsedDigits)
 }
 
 // result is what a parser returns
@@ -33,11 +40,16 @@ type parser func(input []rune) (result, error)
 
 func many(p1 parser) parser {
 	return func(input []rune) (result, error) {
-		result, err := p1(input)
-		for err == nil {
-			result, err = p1(result.remaining)
+		aggregate := result{parsed: []rune{}, remaining: input}
+		for {
+			result1, err := p1(aggregate.remaining)
+			if err != nil {
+				break
+			}
+			aggregate.remaining = result1.remaining
+			aggregate.parsed = append(aggregate.parsed, result1.parsed...)
 		}
-		return result, nil
+		return aggregate, nil
 	}
 }
 
