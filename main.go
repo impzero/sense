@@ -3,56 +3,79 @@ package main
 import (
 	"errors"
 	"fmt"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 func main() {
+	source := "hello world!"
 
-	source := "11111111222223333"
-	// orParser := or(lit('2'), lit('4'))
-	parser := and(lit('1'), lit('2'))
-	fmt.Println(parser(source))
+	helloParser := parseString("hello")
+	parsed, err := helloParser([]rune(source))
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("parsed: %v", parsed)
 }
 
-type parser func(string) (string, error)
+// result is what a parser returns
+type result struct {
+	parsed    []rune
+	remaining []rune
+}
 
-func and(parser1, parser2 parser) parser {
-	return func(input string) (string, error) {
-		value1, err := parser1(input)
+func (r result) String() string {
+	return fmt.Sprintf("Parsed: [%s], Remaining: [%s]", string(r.parsed), string(r.remaining))
+}
+
+type parser func(input []rune) (result, error)
+
+func and(p1, p2 parser) parser {
+	return func(input []rune) (result, error) {
+		result1, err := p1(input)
 		if err != nil {
-			return input, err
+			return result{parsed: []rune{}, remaining: input}, errors.New("and: failed parsing")
 		}
-		spew.Dump(value1)
-		value2, err := parser2(value1)
+		result2, err := p2(result1.remaining)
 		if err != nil {
-			return input, err
+			return result{parsed: []rune{}, remaining: input}, errors.New("and: failed parsing")
 		}
-		return value2, nil
+		return result2, nil
 	}
 }
 
-func or(parser1, parser2 parser) parser {
-	return func(input string) (string, error) {
-		value1, err := parser1(input)
-		if err == nil {
-			return value1, nil
-		}
-		value2, err := parser2(input)
-		if err == nil {
-			return value2, nil
-		}
-		return input, err
-	}
-}
-
-func lit(c rune) parser {
-	return func(input string) (string, error) {
-		for i, current := range input {
-			if current == c {
-				return input[i:], nil
+func any(parsers ...parser) parser {
+	return func(input []rune) (result, error) {
+		for _, p := range parsers {
+			result, err := p(input)
+			if err == nil {
+				return result, nil
 			}
 		}
-		return input, errors.New("lit: could not find character")
+		return result{parsed: []rune{}, remaining: input}, errors.New("any: failed parsing")
+	}
+}
+
+func parseString(s string) parser {
+	sRunes := []rune(s)
+	return func(input []rune) (result, error) {
+		if len(sRunes) > len(input) {
+			return result{parsed: []rune{}, remaining: input}, errors.New("parseString: input shorter than parse string")
+		}
+		for i, r := range sRunes {
+			if r != input[i] {
+				return result{parsed: []rune{}, remaining: input}, errors.New("parseString: string failed parsing - bad input")
+			}
+		}
+		return result{parsed: sRunes, remaining: input[len(sRunes):]}, nil
+	}
+}
+
+func parseChar(c rune) parser {
+	return func(input []rune) (result, error) {
+		if c == input[0] {
+			return result{parsed: input[0:1], remaining: input[1:]}, nil
+		}
+		return result{parsed: []rune{}, remaining: input}, errors.New("parseChar: character failed parsing - bad input")
 	}
 }
