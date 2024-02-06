@@ -9,7 +9,8 @@ func main() {
 	source := "hello world!"
 
 	helloParser := parseString("hello")
-	parsed, err := helloParser([]rune(source))
+	helloAndSpaceParser := and(helloParser, parseChar(' '))
+	parsed, err := helloAndSpaceParser([]rune(source))
 
 	if err != nil {
 		panic(err)
@@ -30,6 +31,16 @@ func (r result) String() string {
 
 type parser func(input []rune) (result, error)
 
+func many(p1 parser) parser {
+	return func(input []rune) (result, error) {
+		result, err := p1(input)
+		for err == nil {
+			result, err = p1(result.remaining)
+		}
+		return result, nil
+	}
+}
+
 func and(p1, p2 parser) parser {
 	return func(input []rune) (result, error) {
 		result1, err := p1(input)
@@ -40,6 +51,7 @@ func and(p1, p2 parser) parser {
 		if err != nil {
 			return result{parsed: []rune{}, remaining: input}, errors.New("and: failed parsing")
 		}
+		result2.parsed = append(result1.parsed, result2.parsed...)
 		return result2, nil
 	}
 }
@@ -76,6 +88,6 @@ func parseChar(c rune) parser {
 		if c == input[0] {
 			return result{parsed: input[0:1], remaining: input[1:]}, nil
 		}
-		return result{parsed: []rune{}, remaining: input}, errors.New("parseChar: character failed parsing - bad input")
+		return result{parsed: []rune{c}, remaining: input}, errors.New("parseChar: character failed parsing - bad input")
 	}
 }
