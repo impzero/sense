@@ -6,24 +6,21 @@ import (
 )
 
 func main() {
-	source := "ahello hello hello hello hello world!"
-	digits := "111122223333"
-
-	parser := many(any(parseChar('a'), and(parseString("hello"), parseChar(' '))))
-	parsed, err := parser([]rune(source))
-
-	manyOneParser := many(parseChar('1'))
-	parsedDigits, err := manyOneParser([]rune(digits))
+	source := "falsed and true is that"
+	val, err := boolean([]rune(source))
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("parsed boolean: %t", val)
+}
 
+func boolean(input []rune) (bool, error) {
+	p := any(parseString("true"), parseString("false"))
+	r, err := p(input)
 	if err != nil {
-		panic(err)
+		return false, err
 	}
-
-	fmt.Printf("parsed: %v\n", parsed)
-	fmt.Printf("parsed 1s: %v", parsedDigits)
+	return string(r.parsed) == "true", nil
 }
 
 // result is what a parser returns
@@ -75,7 +72,7 @@ func and(p1, p2 parser) parser {
 	}
 }
 
-// seq parses input following the sequence of parser from parsers
+// seq parses input following the sequence of parsers from parsers list
 func seq(parsers ...parser) parser {
 	return func(input []rune) (result, error) {
 		aggregate := result{parsed: []rune{}, remaining: input}
